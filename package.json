@@ -1,0 +1,24 @@
+{
+  "name": "headless-faust-test",
+  "version": "1.0.0",
+  "main": "app.js",
+  "scripts": {
+    "dev": "next dev",
+    "generate": "faust generatePossibleTypes",
+    "build": "faust build",
+    "start": "faust start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@apollo/client": "^3.14.1",
+    "@faustwp/cli": "^3.4.1",
+    "@faustwp/core": "^3.4.1",
+    "graphql": "^16.14.2",
+    "next": "^14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
