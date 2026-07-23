@@ -817,19 +817,77 @@ https://brightpath.example
 Confirm that:
 
 - The page loads through HTTPS.
-- The website shows WordPress content.
-- A WordPress post URL opens on the frontend.
+- The starter homepage appears.
 - The browser does not show a certificate warning.
 
-Create a simple WordPress test post when needed.
+At this stage, the test-post link may show a 404 error because the WordPress test post has not been created yet. This is expected.
 
-Example title:
+### Create the WordPress Test Post
 
-```text
-Hello from ReadySpace Headless WordPress
+The starter homepage contains a link to a WordPress post. Create that post now so you can confirm that WordPress, WPGraphQL, Faust.js and Next.js are connected correctly.
+
+1. Log in to the WordPress backend:
+
+   ```text
+   https://cms.brightpath.example/wp-admin
+   ```
+
+2. Go to **Posts → Add New Post**.
+
+3. Enter this title:
+
+   ```text
+   Hello from ReadySpace Headless WordPress
+   ```
+
+4. Check the post URL or permalink. The slug should be:
+
+   ```text
+   hello-from-readyspace-headless-wordpress
+   ```
+
+5. Add this sample content:
+
+   ```text
+   Congratulations! Your WordPress backend is connected to your ReadySpace WebSpace headless frontend.
+   ```
+
+6. Click **Publish**.
+
+7. Open the post through the frontend:
+
+   ```text
+   https://brightpath.example/hello-from-readyspace-headless-wordpress/
+   ```
+
+The test is successful when the published WordPress post appears through the Next.js frontend.
+
+> [!NOTE]
+> `BrightPath` is a fictional example. For a real project, replace `brightpath.example` with the client’s actual frontend domain. If you use a different post title or slug, update the link inside `pages/index.js` so that it matches the real WordPress post path.
+
+### Confirm the Starter Homepage Link
+
+Open `pages/index.js` and confirm that the test-post link uses this path:
+
+```jsx
+<a href="/hello-from-readyspace-headless-wordpress/">
+  Open the WordPress test post
+</a>
 ```
 
-Publish it, then open its matching frontend URL.
+The path in `pages/index.js` must exactly match the WordPress post slug.
+
+After changing `pages/index.js`, commit and push the change to GitHub. Then deploy the updated code to WebSpace:
+
+```bash
+cd ~/brightpath-headless
+git pull origin main
+npm run build
+mkdir -p tmp
+touch tmp/restart.txt
+```
+
+Open the frontend homepage again and click **Open the WordPress test post**.
 
 ---
 
