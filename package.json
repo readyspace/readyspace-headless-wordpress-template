@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "generate": "faust generatePossibleTypes",
-    "build": "faust build",
+    "build": "NODE_OPTIONS='--disable-wasm-trap-handler' faust build",
     "start": "faust start"
   },
   "keywords": [],
