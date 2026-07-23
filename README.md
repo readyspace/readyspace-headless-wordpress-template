@@ -236,10 +236,10 @@ Open `package.json`.
 Change:
 
 ```json
-"name": "headless-faust-test"
+"name": "readyspace-headless-wordpress-starter"
 ```
 
-to a simple project name using lowercase letters and hyphens:
+to a project-specific name using lowercase letters and hyphens:
 
 ```json
 "name": "brightpath-headless-wordpress"
