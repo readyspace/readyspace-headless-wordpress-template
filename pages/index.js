@@ -1,3 +1,5 @@
+import { getRankMathHead } from "../lib/rank-math";
+
 export default function HomePage() {
   return (
     <main className="container">
@@ -24,4 +26,13 @@ export default function HomePage() {
       </p>
     </main>
   );
+}
+
+export async function getStaticProps() {
+  return {
+    props: {
+      rankMathHead: await getRankMathHead(),
+    },
+    revalidate: 30,
+  };
 }

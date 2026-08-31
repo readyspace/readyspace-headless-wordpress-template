@@ -324,6 +324,17 @@ Faust.js
 
 WPGraphQL provides the content API. Faust.js connects that API to the Next.js frontend.
 
+### Optional: install Rank Math for headless SEO
+
+Install and activate Rank Math when you want WordPress editors to manage page titles, descriptions, canonical URLs, social sharing metadata and schema for the headless frontend.
+
+[Download Rank Math SEO for WordPress](https://rankmath.com/?ref=super%20salesman)
+
+> [!NOTE]
+> The Rank Math link above is a referral link. The template maintainer may earn a commission when you use it, at no additional cost to you.
+
+Rank Math is optional. The basic WordPress and Faust.js connection works without it. Its headless setting is configured later in this guide.
+
 ---
 
 ## 14. Test WPGraphQL
@@ -592,7 +603,24 @@ possibleTypes.json
 
 ## 23. Create `.env.local`
 
-Inside the application folder, create:
+This template uses two similarly named files for different purposes:
+
+```text
+.env.example   Safe reference file with placeholders; commit this to GitHub
+.env.local     Real settings for one installation; never commit this to GitHub
+```
+
+Do not put real domains, IDs or secrets into `.env.example`. New repositories created from the template inherit that file, so it must remain safe to publish.
+
+For this guide, `.env.local` is the recommended single source for the application's real values. Next.js loads it during the build and when the application starts.
+
+Inside the application folder, copy the example file:
+
+```bash
+cp .env.example .env.local
+```
+
+Then open:
 
 ```text
 .env.local
@@ -604,14 +632,42 @@ A beginner-friendly method is:
 nano .env.local
 ```
 
-Add:
+Replace the example values so the active settings look similar to:
 
 ```env
 NEXT_PUBLIC_WORDPRESS_URL=https://cms.brightpath.example
+NEXT_PUBLIC_SITE_URL=https://brightpath.example
 FAUST_SECRET_KEY=PASTE_THE_SECRET_FROM_WORDPRESS_HERE
+
+# Optional Google integrations
+NEXT_PUBLIC_GTM_ID=
+NEXT_PUBLIC_GA_MEASUREMENT_ID=
+NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=
+
+# Optional Rank Math headless SEO
+RANK_MATH_ENABLED=false
 ```
 
-Replace both example values.
+Replace the first three example values. Leave optional values blank or disabled until you configure the corresponding service in Part I.
+
+### Can the values be entered in Node.js Selector instead?
+
+CloudLinux Node.js Selector can store application environment variables, but this guide deliberately uses `.env.local` for the project-specific values and uses the Selector screen only for:
+
+```env
+NODE_ENV=production
+```
+
+This avoids having two different configuration sources. Do not define the same variable in `.env.local` and Node.js Selector with different values.
+
+Experienced administrators may store all real values in Node.js Selector instead of `.env.local`. When using that approach:
+
+- Every `NEXT_PUBLIC_` variable must be available in the Terminal session when `npm run build` runs. Next.js embeds those values into the frontend build.
+- `FAUST_SECRET_KEY` and `RANK_MATH_ENABLED` must also be available to the running Passenger application.
+- After changing any `NEXT_PUBLIC_` value, run `npm run build` again and restart the application. Restarting without rebuilding is not enough.
+- Confirm a non-secret public value is visible before building, for example with `printenv NEXT_PUBLIC_SITE_URL`. Never display `FAUST_SECRET_KEY` in a screenshot or support message.
+
+If you are unsure whether Selector variables are available inside the build Terminal, use `.env.local` as described in this guide.
 
 Save in `nano`:
 
@@ -677,6 +733,8 @@ Add this environment variable in the Node.js application screen when the option 
 ```text
 NODE_ENV=production
 ```
+
+The project-specific WordPress, Google and Rank Math values remain in `.env.local` when following this guide. Do not copy them into this screen as well.
 
 Create or save the application.
 
@@ -904,7 +962,105 @@ Do not lock yourself out of the WordPress admin area.
 
 ---
 
-# Part I — Normal Development Workflow
+# Part I — Optional Analytics, Search Console and Headless SEO
+
+These integrations are built into the template but remain disabled until their environment values are added. You can enable any one of them without enabling the others.
+
+## Configure Google Tag Manager
+
+1. Create a **Web** container in Google Tag Manager.
+2. Copy the container ID beginning with `GTM-`.
+3. Add it to `.env.local`:
+
+   ```env
+   NEXT_PUBLIC_GTM_ID=GTM-ABCDEFG
+   ```
+
+4. Rebuild and restart the frontend.
+5. Use Google Tag Manager Preview and Tag Assistant to confirm that the container loads.
+
+The template adds both parts of Google's container installation: the JavaScript loader and the `<noscript>` iframe fallback.
+
+For a Next.js site, navigation between pages can happen without a full browser reload. When Google Analytics is deployed through GTM, configure GA4 for a single-page application using a **History Change** trigger and test that exactly one `page_view` is recorded per navigation.
+
+## Configure Google Analytics directly
+
+Use this option when you do not deploy Google Analytics from Google Tag Manager.
+
+1. In Google Analytics, open the GA4 web data stream.
+2. Copy the Measurement ID beginning with `G-`.
+3. Add it to `.env.local`:
+
+   ```env
+   NEXT_PUBLIC_GA_MEASUREMENT_ID=G-ABCDEFGHIJ
+   ```
+
+4. Under **Enhanced measurement → Page views**, keep browser-history page changes enabled so Next.js client-side navigation is measured.
+5. Rebuild and restart, then verify the site with Tag Assistant and GA4 DebugView.
+
+> [!WARNING]
+> Do not set `NEXT_PUBLIC_GA_MEASUREMENT_ID` when the same Google Analytics property is already loaded through `NEXT_PUBLIC_GTM_ID`. Loading both can double-count page views and events.
+
+## Verify the frontend in Google Search Console
+
+For a Search Console **URL-prefix property**, select the HTML tag verification method. Google provides markup similar to:
+
+```html
+<meta name="google-site-verification" content="YOUR_TOKEN" />
+```
+
+Copy only the value inside `content`, not the entire HTML tag:
+
+```env
+NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION=YOUR_TOKEN
+```
+
+Rebuild and restart the frontend. Open the frontend homepage's page source, confirm that `google-site-verification` appears inside `<head>`, and then click **Verify** in Search Console.
+
+A Search Console **Domain property** uses DNS verification instead of this meta tag. The frontend homepage must also be public and accessible without a login for HTML-tag verification.
+
+## Enable Rank Math headless SEO
+
+1. Install and activate Rank Math in the WordPress backend. You can use the [Rank Math referral download link](https://rankmath.com/?ref=super%20salesman); the template maintainer may earn a commission at no extra cost to you.
+2. Switch Rank Math to **Advanced Mode** when the required settings are not visible.
+3. Go to **Rank Math SEO → General Settings → Others**.
+4. Enable **Headless CMS Support** and save the changes.
+5. Update `.env.local`:
+
+   ```env
+   NEXT_PUBLIC_WORDPRESS_URL=https://cms.brightpath.example
+   NEXT_PUBLIC_SITE_URL=https://brightpath.example
+   RANK_MATH_ENABLED=true
+   ```
+
+6. Test the Rank Math endpoint, replacing both example domains:
+
+   ```text
+   https://cms.brightpath.example/wp-json/rankmath/v1/getHead?url=https%3A%2F%2Fbrightpath.example%2Fhello-from-readyspace-headless-wordpress%2F
+   ```
+
+   A working response contains `"success": true` and a `head` value with HTML metadata.
+
+7. Rebuild and restart the frontend.
+8. View the source of a frontend post and confirm that its Rank Math title, description, canonical link, social tags and JSON-LD are inside `<head>`.
+
+The frontend requests Rank Math metadata during static generation and revalidation. Only head-safe tags are rendered: `<title>`, `<meta>`, `<link>` and valid `application/ld+json` structured data. If Rank Math is unavailable, the build continues and logs a warning instead of taking the website offline.
+
+Rank Math requires a full URL in its `url` query parameter. Keep `NEXT_PUBLIC_SITE_URL` identical to the canonical public frontend origin, including `https://` and without a trailing slash. If a firewall or security plugin blocks the request, allow this WordPress REST endpoint:
+
+```text
+/wp-json/rankmath/v1/getHead
+```
+
+## Privacy and consent
+
+GTM and Google Analytics can collect visitor data and set cookies. Before enabling them, determine whether your audience and jurisdiction require a consent-management platform, a privacy notice, consent mode or delayed loading. This template does not assume consent on the visitor's behalf.
+
+After changing any `NEXT_PUBLIC_` value, always rebuild the application. Next.js embeds public environment values into the browser bundle at build time.
+
+---
+
+# Part J — Normal Development Workflow
 
 ## 33. Which Repository Should Be the Main Copy?
 
@@ -977,7 +1133,7 @@ Schema changes can happen after installing or removing WordPress plugins, custom
 
 ---
 
-# Part J — Understand the Template Files
+# Part K — Understand the Template Files
 
 ## 36. Main Files and Folders
 
@@ -1008,6 +1164,16 @@ npm run start
 
 Contains Next.js pages and the Faust API route.
 
+The shared app component adds optional GTM, Google Analytics, Search Console verification and Rank Math metadata to the frontend.
+
+### `components/`
+
+Contains the Google integration components and the safe renderer for Rank Math head metadata.
+
+### `lib/rank-math.js`
+
+Fetches the Rank Math headless REST response during static generation and revalidation.
+
 ### `wp-templates/`
 
 Contains templates that display WordPress content.
@@ -1028,7 +1194,7 @@ Prevents secrets, installed packages, build outputs and logs from being committe
 
 ---
 
-# Part K — Common Problems
+# Part L — Common Problems
 
 ## 37. “Terminal” or “Setup Node.js App” Is Missing
 
@@ -1139,7 +1305,31 @@ Never commit the secret.
 
 ---
 
-# Part L — First Launch Checklist
+## GTM or Google Analytics Does Not Appear
+
+Check that the correct ID is present in `.env.local` and that the application was rebuilt after the value changed. GTM IDs must begin with `GTM-`; GA4 Measurement IDs normally begin with `G-`.
+
+Use Tag Assistant and the browser Network panel to verify requests. Also check whether a consent-management tool is intentionally preventing analytics from loading.
+
+## Rank Math Metadata Does Not Appear
+
+Check:
+
+```text
+Rank Math is active
+Advanced Mode is enabled
+Headless CMS Support is enabled
+RANK_MATH_ENABLED=true
+NEXT_PUBLIC_SITE_URL contains the public frontend origin
+The getHead REST endpoint returns success: true
+The WordPress firewall allows /wp-json/rankmath/v1/getHead
+```
+
+Review the build or server log for an `Unable to load Rank Math metadata` warning, then rebuild after correcting the configuration.
+
+---
+
+# Part M — First Launch Checklist
 
 Before calling the setup complete, confirm every item:
 
@@ -1156,6 +1346,7 @@ Before calling the setup complete, confirm every item:
 - [ ] The GraphQL endpoint works.
 - [ ] The Faust frontend URL is correct.
 - [ ] `.env.local` contains the WordPress URL and Faust secret.
+- [ ] `NEXT_PUBLIC_SITE_URL` contains the canonical frontend origin.
 - [ ] `.env.local` is not tracked by Git.
 - [ ] The GitHub deploy key is read-only.
 - [ ] The cPanel application root is correct.
@@ -1165,6 +1356,9 @@ Before calling the setup complete, confirm every item:
 - [ ] `npm run build` completes successfully.
 - [ ] The Node.js application has been restarted.
 - [ ] The frontend displays WordPress content.
+- [ ] Optional GTM and GA tags were tested without duplicate page views.
+- [ ] Optional Search Console verification is present on the public homepage.
+- [ ] Optional Rank Math metadata and JSON-LD appear in frontend page source.
 - [ ] The project source is safely stored in GitHub.
 
 ---
@@ -1202,6 +1396,11 @@ SSH private key
 - [Faust.js Basic Setup](https://faustjs.org/docs/how-to/basic-setup/)
 - [Faust.js Self-Hosted Deployment](https://faustjs.org/docs/explanation/deploy-your-app/)
 - [WPGraphQL Quick Start](https://www.wpgraphql.com/docs/quick-start)
+- [Rank Math Headless CMS Support](https://rankmath.com/kb/headless-cms-support/)
+- [Google Tag Manager Web Container Installation](https://support.google.com/tagmanager/answer/14847097)
+- [Google tag setup with gtag.js](https://developers.google.com/tag-platform/gtagjs)
+- [Google Analytics single-page application measurement](https://developers.google.com/analytics/devguides/collection/ga4/measure-spa-gtm)
+- [Google Search Console ownership verification](https://support.google.com/webmasters/answer/9008080)
 - [cPanel Node.js Installation Guide](https://docs.cpanel.net/knowledge-base/general-server-administration/guide-to-node-js-installations/)
 - [CloudLinux Node.js Selector](https://docs.cloudlinux.com/cloudlinuxos/lve_manager/)
 
