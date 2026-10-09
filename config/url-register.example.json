@@ -1,0 +1,5 @@
+[
+  {"path":"/","status":200,"canonical":"/","type":"homepage"},
+  {"path":"/existing-article/","status":200,"canonical":"/existing-article/","type":"post"},
+  {"path":"/category/example/","status":200,"canonical":"/category/example/","type":"category"}
+]
