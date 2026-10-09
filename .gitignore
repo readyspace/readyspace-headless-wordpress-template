@@ -24,3 +24,8 @@ tmp/
 .DS_Store
 Thumbs.db
 node_modules
+*.tsbuildinfo
+coverage/
+.deploy/
+url-register.private.json
+audit-results*.json

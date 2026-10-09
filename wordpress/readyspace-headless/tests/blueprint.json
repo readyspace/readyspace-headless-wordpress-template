@@ -1,0 +1,61 @@
+{
+  "preferredVersions": {
+    "php": "8.3",
+    "wp": "6.8.3"
+  },
+  "steps": [
+    {
+      "step": "installPlugin",
+      "pluginData": {
+        "resource": "url",
+        "url": "https://downloads.wordpress.org/plugin/wp-graphql.2.23.1.zip"
+      },
+      "options": {
+        "activate": true
+      }
+    },
+    {
+      "step": "installPlugin",
+      "pluginData": {
+        "resource": "url",
+        "url": "https://downloads.wordpress.org/plugin/seo-by-rank-math.1.0.280.zip"
+      },
+      "options": {
+        "activate": true
+      }
+    },
+    {
+      "step": "setSiteOptions",
+      "options": {
+        "permalink_structure": "/%postname%/",
+        "blog_public": 1,
+        "rank_math_registration_skip": true,
+        "rank_math_wizard_completed": true,
+        "rank_math_modules": [
+          "rich-snippet",
+          "sitemap"
+        ]
+      }
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php require_once '/wordpress/wp-load.php'; require_once ABSPATH . 'wp-admin/includes/plugin.php'; activate_plugin('readyspace-headless/readyspace-headless.php'); $post = wp_insert_post(['post_title'=>'Fixture post','post_name'=>'fixture','post_status'=>'publish','post_type'=>'post','post_content'=>'<p>Published fixture.</p>']); update_post_meta($post,'rank_math_title','GraphQL fixture title'); update_post_meta($post,'rank_math_description','GraphQL fixture description'); update_option('rs_test_post_id',$post);  flush_rewrite_rules(false);"
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php require_once '/wordpress/wp-load.php'; wp_set_current_user(0); $result=graphql(['query'=>'{ readyspaceSettings { frontPageUri postsPageUri } readyspaceSeo(uri: \"/invalid-private-route/\") { ready generatedAt title robots } }']); if(!empty($result['errors'])){throw new RuntimeException(json_encode($result));} file_put_contents('/tmp/readyspace-schema-results.json',json_encode($result)); echo 'GraphQL extension query passed';"
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php $_SERVER['REQUEST_URI']='/fixture/'; $_SERVER['SCRIPT_NAME']='/index.php'; require '/wordpress/wp-load.php'; wp_set_current_user(0); wp(); ob_start(); wp_head(); $html=ob_get_clean(); if(!ReadySpace\\Headless\\SEO::snapshot('/fixture/')['ready']){throw new RuntimeException('Rendered SEO failed: '.json_encode(['html'=>substr($html,0,500),'admin'=>is_admin(),'rankVersion'=>defined('RANK_MATH_VERSION')?RANK_MATH_VERSION:null,'rankFrontend'=>isset(rank_math()->frontend),'rankInvalid'=>rank_math()->registration->invalid,'singular'=>is_singular(),'user'=>get_current_user_id(),'object'=>get_queried_object_id(),'rankHook'=>has_action('rank_math/head')]));}"
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php require '/wordpress/wp-load.php'; wp_set_current_user(0); $result=graphql(['query'=>'{ readyspaceSeo(uri: \"/fixture/\") { ready title description robots canonical openGraphTitle jsonLd } nodeByUri(uri: \"/fixture/\") { __typename ... on Post { title readyspaceSeo {ready title} } } }']); if(!empty($result['errors'])||empty($result['data']['readyspaceSeo']['ready'])||$result['data']['readyspaceSeo']['title']!=='GraphQL fixture title'||$result['data']['readyspaceSeo']['description']!=='GraphQL fixture description'||!in_array('index',$result['data']['readyspaceSeo']['robots'],true)||strpos($result['data']['readyspaceSeo']['canonical'],'/fixture/')===false||!is_array(json_decode($result['data']['readyspaceSeo']['jsonLd'],true))){throw new RuntimeException(json_encode($result));} echo 'Native Rank Math snapshot and published Post GraphQL passed';"
+    },
+    {
+      "step": "runPHP",
+      "code": "<?php require '/wordpress/wp-load.php'; register_nav_menus(['primary'=>'Primary']); wp_set_current_user(0); $result=graphql(['query'=>'query ReadySpaceUri($uri:String!, $seoUri:String!, $after:String, $first:Int!) { readyspaceSeo(uri:$seoUri) {ready generatedAt title description canonical robots openGraphTitle openGraphDescription openGraphImage openGraphUrl openGraphType openGraphSiteName twitterCard twitterTitle twitterDescription twitterImage jsonLd} nodeByUri(uri:$uri) { __typename ... on ContentType { name isRestricted } ... on Post { id databaseId uri title content excerpt status date modified isRestricted hasPassword readyspaceSeo { ready generatedAt title description canonical robots openGraphTitle openGraphDescription openGraphImage openGraphUrl openGraphType openGraphSiteName twitterCard twitterTitle twitterDescription twitterImage jsonLd } author { node { name uri } } featuredImage { node { sourceUrl altText mediaDetails { width height } } } categories { nodes { name uri } } tags { nodes { name uri } } } ... on Page { id databaseId uri title content status date modified isRestricted hasPassword readyspaceSeo { ready generatedAt title description canonical robots openGraphTitle openGraphDescription openGraphImage openGraphUrl openGraphType openGraphSiteName twitterCard twitterTitle twitterDescription twitterImage jsonLd } featuredImage { node { sourceUrl altText } } } ... on Category { id uri name description readyspaceSeo {ready generatedAt title description canonical robots openGraphTitle openGraphDescription openGraphImage openGraphUrl openGraphType openGraphSiteName twitterCard twitterTitle twitterDescription twitterImage jsonLd} posts(first:$first,after:$after,where:{status:PUBLISH}) {nodes { id uri title excerpt status isRestricted hasPassword } pageInfo { hasNextPage endCursor }} } ... on Tag { id uri name description readyspaceSeo {ready generatedAt title description canonical robots openGraphTitle openGraphDescription openGraphImage openGraphUrl openGraphType openGraphSiteName twitterCard twitterTitle twitterDescription twitterImage jsonLd} posts(first:$first,after:$after,where:{status:PUBLISH}) {nodes { id uri title excerpt status isRestricted hasPassword } pageInfo { hasNextPage endCursor }} } ... on User { id uri name posts(first:$first,after:$after,where:{status:PUBLISH}) {nodes { id uri title excerpt status isRestricted hasPassword } pageInfo { hasNextPage endCursor }} } } }','variables'=>['uri'=>'/fixture/','seoUri'=>'/fixture/','after'=>null,'first'=>10]]); if(!empty($result['errors'])||$result['data']['nodeByUri']['__typename']!=='Post'){throw new RuntimeException('Frontend URI query: '.json_encode($result));} $menu=graphql(['query'=>'query ReadySpaceMenu($location:MenuLocationEnum!) { menuItems(first:100,where:{location:$location}) { nodes { id label url parentId } pageInfo {hasNextPage} } }','variables'=>['location'=>'PRIMARY']]); if(!empty($menu['errors'])){throw new RuntimeException('Frontend menu query: '.json_encode($menu));} foreach(['posts','pages','categories','tags'] as $field){$where=in_array($field,['posts','pages'],true)?',where:{status:PUBLISH}':',where:{hideEmpty:true}';$fields=in_array($field,['posts','pages'],true)?'uri modified isRestricted hasPassword':'uri';$query='query ReadySpaceSitemap($after:String) { '.$field.'(first:100,after:$after'.$where.') { nodes { '.$fields.' } pageInfo {hasNextPage endCursor} } }';$result=graphql(['query'=>$query,'variables'=>['after'=>null]]);if(!empty($result['errors'])){throw new RuntimeException('Frontend sitemap query: '.json_encode($result));}} wp_set_current_user(1); $draft=wp_insert_post(['post_title'=>'Draft fixture','post_status'=>'draft','post_type'=>'post']);$preview=graphql(['query'=>'query ReadySpacePreview($id:ID!) { contentNode(id:$id,idType:DATABASE_ID,asPreview:true) { __typename ... on Post { id databaseId uri title content excerpt status date modified isRestricted hasPassword readyspaceSeo { ready generatedAt title description canonical robots openGraphTitle openGraphDescription openGraphImage openGraphUrl openGraphType openGraphSiteName twitterCard twitterTitle twitterDescription twitterImage jsonLd } author { node { name uri } } featuredImage { node { sourceUrl altText mediaDetails { width height } } } categories { nodes { name uri } } tags { nodes { name uri } } } ... on Page { id databaseId uri title content status date modified isRestricted hasPassword readyspaceSeo { ready generatedAt title description canonical robots openGraphTitle openGraphDescription openGraphImage openGraphUrl openGraphType openGraphSiteName twitterCard twitterTitle twitterDescription twitterImage jsonLd } featuredImage { node { sourceUrl altText } } } } }','variables'=>['id'=>(string)$draft]]);if(!empty($preview['errors'])||empty($preview['data']['contentNode'])){throw new RuntimeException('Frontend preview query: '.json_encode($preview));} wp_set_current_user(0);$private=graphql(['query'=>'query($id:ID!) { contentNode(id:$id,idType:DATABASE_ID) { id } }','variables'=>['id'=>(string)$draft]]);if(!empty($private['data']['contentNode'])){throw new RuntimeException('Draft exposed anonymously');}echo 'Frontend URI/menu/sitemap/asPreview and anonymous draft contracts passed';"
+    }
+  ]
+}
