@@ -1,0 +1,57 @@
+name: Starter validation
+on:
+  pull_request:
+    branches: [staging, main]
+  push:
+    branches: [staging, main]
+permissions:
+  contents: read
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        environment: [staging, production]
+    env:
+      SITE_ENV: ${{ matrix.environment }}
+      SMOKE_ENV: ${{ matrix.environment }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run smoke
+      - name: Validate deployment syntax
+        run: |
+          bash -n scripts/deploy.sh
+          bash -n scripts/rollback.sh
+          node --check app.js
+  wordpress-syntax:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint the schema extension and PHP checks
+        run: find wordpress -type f -name '*.php' -print0 | xargs -0 -r -n 1 php -l
+      - name: Exercise plugin parsing and access guards
+        run: php wordpress/readyspace-headless/tests/run.php
+  wordpress-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify disposable WordPress, WPGraphQL and Rank Math contracts
+        run: |
+          npx --yes @wp-playground/cli@3.1.51 run-blueprint \
+            --blueprint=wordpress/readyspace-headless/tests/blueprint.json \
+            --wp=6.8.3 --php=8.3 \
+            --mount="$PWD/wordpress/readyspace-headless:/wordpress/wp-content/plugins/readyspace-headless"
